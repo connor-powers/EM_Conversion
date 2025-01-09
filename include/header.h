@@ -1,6 +1,8 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <algorithm>
+#include <fstream>
+
 class MassObject
 {
     public:
@@ -117,7 +119,7 @@ class MechanicalCircuit
                             double infinity=INFINITY;
                             element_name=val;
                             add_mass_element(val, infinity, infinity);
-                            continue
+                            continue;
                         }
                         else{
                             element_name=val;
@@ -232,45 +234,53 @@ class MechanicalCircuit
 
 class ResistorObject
 {
-    private:
+
+    public:
+        std::string name_="";
         std::string incoming_connection_name_="";
         std::string outgoing_connection_name_="";
         double resistance_=0.0;
-    public:
-        ResistorObject(std::string incoming_connection_name, std::string outgoing_connection_name, double resistance){
+
+        ResistorObject(std::string name,std::string incoming_connection_name, std::string outgoing_connection_name, double resistance){
+            name_=name;
             incoming_connection_name_=incoming_connection_name;
             outgoing_connection_name_=outgoing_connection_name;
             resistance_=resistance;
         }
-}
+};
 
 class CapacitorObject
 {
-    private:
+
+    public:
+        std::string name_="";
         std::string incoming_connection_name_="";
         std::string outgoing_connection_name_="";
         double capacitance_=0.0;
-    public:
-        CapacitorObject(std::string incoming_connection_name, std::string outgoing_connection_name, double capacitance){
+
+        CapacitorObject(std::string name,std::string incoming_connection_name, std::string outgoing_connection_name, double capacitance){
+            name_=name;
             incoming_connection_name_=incoming_connection_name;
             outgoing_connection_name_=outgoing_connection_name;
             capacitance_=capacitance;
         }
-}
+};
 
 class InductorObject
 {
-    private:
+    public:
+        std::string name_="";
         std::string incoming_connection_name_="";
         std::string outgoing_connection_name_="";
         double inductance_=0.0;
-    public:
-        InductorObject(std::string incoming_connection_name, std::string outgoing_connection_name, double inductance){
+
+        InductorObject(std::string name,std::string incoming_connection_name, std::string outgoing_connection_name, double inductance){
+            name_=name;
             incoming_connection_name_=incoming_connection_name;
             outgoing_connection_name_=outgoing_connection_name;
             inductance_=inductance;
         }
-}
+};
 
 class ElectricalCircuit
 {
