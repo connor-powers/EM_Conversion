@@ -7,10 +7,10 @@ MOI=10
 name=ground
 
 @connection
-name=friction_1
-type=friction
-mass_1=mass_1
-mass_2=mass_2
+name=damper_1
+type=damper
+left_object=mass_1
+right_object=mass_2
 coefficient=0.4
 
 @mass
@@ -18,8 +18,13 @@ name=mass_2
 mass=3
 
 @connection
-name=friction_2
-type=friction
-mass_1=ground
-mass_2=mass_2
+name=spring_1
+type=spring
+left_object=ground
+right_object=mass_2
 coefficient=0.2
+
+@force
+name=force_1
+object=mass_1
+force_val=5
