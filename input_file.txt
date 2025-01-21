@@ -9,8 +9,8 @@ name=ground
 @connection
 name=damper_1
 type=damper
-left_object=mass_1
-right_object=mass_2
+left_element=mass_1
+right_element=mass_2
 coefficient=0.4
 
 @mass
@@ -20,8 +20,8 @@ mass=3
 @connection
 name=spring_1
 type=spring
-left_object=ground
-right_object=mass_2
+left_element=ground
+right_element=mass_2
 coefficient=0.2
 
 @force

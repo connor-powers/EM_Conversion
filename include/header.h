@@ -2,6 +2,7 @@
 #include <Eigen/Dense>
 #include <algorithm>
 #include <fstream>
+#include <unordered_map>
 
 class MassObject
 {
@@ -23,15 +24,15 @@ class ConnectionObject
     public:
         std::string name_="";
         std::string type_="";
-        std::string left_object_name_="";
-        std::string right_object_name_="";
+        std::string left_element_name_="";
+        std::string right_element_name_="";
         double coefficient_={0};
 
-        ConnectionObject(std::string name, std::string type,std::string left_object_name,std::string right_object_name, double coefficient){
+        ConnectionObject(std::string name, std::string type,std::string left_element_name,std::string right_element_name, double coefficient){
             name_=name;
             type_=type;
-            left_object_name_=left_object_name;
-            right_object_name_=right_object_name;
+            left_element_name_=left_element_name;
+            right_element_name_=right_element_name;
             coefficient_=coefficient;
         }
 
@@ -68,8 +69,8 @@ class MechanicalCircuit
             double element_mass;
             double element_MOI;
             std::string element_connection_type;
-            std::string left_object_name;
-            std::string right_object_name;
+            std::string left_element_name;
+            std::string right_element_name;
             std::string object_name;
             double element_connection_coefficient;
             //skip empty lines
@@ -89,7 +90,7 @@ class MechanicalCircuit
                         add_mass_element(element_name,element_mass,element_MOI);
                     }
                     else if (element_type.compare("connection")==0){
-                        add_connection(element_name,element_connection_type,left_object_name,right_object_name,element_connection_coefficient);
+                        add_connection(element_name,element_connection_type,left_element_name,right_element_name,element_connection_coefficient);
                     }
                     else if (element_type.compare("force")==0){
                         add_force(element_name,object_name,element_connection_coefficient);
@@ -99,8 +100,8 @@ class MechanicalCircuit
                     element_mass=0;
                     element_MOI=0;
                     element_connection_type="";
-                    left_object_name="";
-                    right_object_name="";
+                    left_element_name="";
+                    right_element_name="";
                     object_name="";
                     element_connection_coefficient=0;
 
@@ -158,11 +159,11 @@ class MechanicalCircuit
                     else if (key.compare("type")==0){
                         element_connection_type=val;
                     }
-                    else if (key.compare("left_object")==0){
-                        left_object_name=val;
+                    else if (key.compare("left_element")==0){
+                        left_element_name=val;
                     }
-                    else if (key.compare("right_object")==0){
-                        right_object_name=val;
+                    else if (key.compare("right_element")==0){
+                        right_element_name=val;
                     }
                     else if (key.compare("object")==0){
                         object_name=val;
@@ -182,7 +183,7 @@ class MechanicalCircuit
             add_mass_element(element_name,element_mass,element_MOI);
         }
         else if (element_type.compare("connection")==0){
-            add_connection(element_name,element_connection_type,left_object_name,right_object_name,element_connection_coefficient);
+            add_connection(element_name,element_connection_type,left_element_name,right_element_name,element_connection_coefficient);
         }
         else if (element_type.compare("force")==0){
             add_force(element_name,object_name,element_connection_coefficient);
@@ -198,8 +199,8 @@ class MechanicalCircuit
         mass_list_.insert(mass_list_.end(),mass_object);
     }
 
-    void add_connection(std::string name, std::string type,std::string left_object_name,std::string right_object_name, double coefficient){
-        ConnectionObject connection_object=ConnectionObject(name,type,left_object_name,right_object_name,coefficient);
+    void add_connection(std::string name, std::string type,std::string left_element_name,std::string right_element_name, double coefficient){
+        ConnectionObject connection_object=ConnectionObject(name,type,left_element_name,right_element_name,coefficient);
         connection_list_.insert(connection_list_.end(),connection_object);
     }
 
@@ -221,8 +222,8 @@ class MechanicalCircuit
             ConnectionObject tmp=connection_list_[index];
             std::cout << "Connection element name: " << tmp.name_ << "\n";
             std::cout << "Connection element type: " << tmp.type_ << "\n";
-            std::cout << "Object on left of connection: " << tmp.left_object_name_ << "\n";
-            std::cout << "Object on right of connection: " << tmp.right_object_name_ << "\n";
+            std::cout << "Object on left of connection: " << tmp.left_element_name_ << "\n";
+            std::cout << "Object on right of connection: " << tmp.right_element_name_ << "\n";
             std::cout << "Connection element coefficient: " << tmp.coefficient_ << "\n";
         }
     }
@@ -263,7 +264,7 @@ class MechanicalCircuit
                     std::string right_obj_name=mass_list_.at(right_obj_index).name_;
                     for (int connection_index{0};connection_index<connection_list_.size();connection_index++){
                         ConnectionObject tmp_connection_obj=connection_list_[connection_index];
-                        if ((tmp_connection_obj.left_object_name_==left_obj_name) && (tmp_connection_obj.right_object_name_==right_obj_name)){
+                        if ((tmp_connection_obj.left_element_name_==left_obj_name) && (tmp_connection_obj.right_element_name_==right_obj_name)){
                             (connection_matrix_.at(0))(left_obj_index,right_obj_index)=tmp_connection_obj.coefficient_;
                             (connection_matrix_.at(1))(left_obj_index,right_obj_index)=std::distance(connection_type_list.begin(), std::find(connection_type_list.begin(),connection_type_list.end(),tmp_connection_obj.type_));
                         }
@@ -277,139 +278,47 @@ class MechanicalCircuit
 
 
 
-class ResistorObject
-{
 
-    public:
-        std::string name_="";
-        std::string left_node_name_="";
-        std::string right_node_name_="";
-        double resistance_=0.0;
-
-        ResistorObject(std::string name,std::string left_node_name, std::string right_node_name, double resistance){
-            name_=name;
-            left_node_name_=left_node_name;
-            right_node_name_=right_node_name;
-            resistance_=resistance;
-        }
-};
-
-class CapacitorObject
-{
-
-    public:
-        std::string name_="";
-        std::string left_node_name_="";
-        std::string right_node_name_="";
-        double capacitance_=0.0;
-
-        CapacitorObject(std::string name,std::string left_node_name, std::string right_node_name, double capacitance){
-            name_=name;
-            left_node_name_=left_node_name;
-            right_node_name_=right_node_name;
-            capacitance_=capacitance;
-        }
-};
-
-class InductorObject
+class ElectricalCircuitElement
 {
     public:
         std::string name_="";
-        std::string left_node_name_="";
-        std::string right_node_name_="";
-        double inductance_=0.0;
+        std::string type_="";
+        std::vector<ElectricalCircuitElement> left_circuit_elements; 
+        std::vector<ElectricalCircuitElement> right_circuit_elements;
+        double coefficient_=0.0;
 
-        InductorObject(std::string name,std::string left_node_name, std::string right_node_name, double inductance){
+        ElectricalCircuitElement(std::string name, std::string type,double coefficient){
             name_=name;
-            left_node_name_=left_node_name;
-            right_node_name_=right_node_name;
-            inductance_=inductance;
+            type_=type;
+            coefficient_=coefficient;
         }
-};
 
-class NodeObject
-{
-    public:
-        std::string name_="";
+        void add_left_element(ElectricalCircuitElement input_element){
+            std::cout << "adding element to left of circuit element named " << name_ << "\n";
+            std::cout << "pre-push size: " << left_circuit_elements.size() << "\n";
 
-        NodeObject(std::string name){
-            name_=name;
+            left_circuit_elements.push_back(input_element);
+            std::cout << "post-push size: " << left_circuit_elements.size() << "\n";
         }
-};
+        void add_right_element(ElectricalCircuitElement input_element){
+            std::cout << "adding element to right of circuit element named " << name_ << "\n";
+            std::cout << "pre-push size: " << right_circuit_elements.size() << "\n";
 
-class WireObject
-{
-    public:
-        std::string left_node_name_="";
-        std::string right_node_name_="";
-
-        WireObject(std::string left_node_name,std::string right_node_name,std::vector<NodeObject>& node_list){
-            //verify that both input nodes exist in node list
-            bool left_found_flag=false;
-            bool right_found_flag=false;
-            for (size_t node_index=0;node_index<node_list.size();node_index++){
-                NodeObject tmp_node=node_list[node_index];
-                if (tmp_node.name_.compare(left_node_name)==0){
-                    left_found_flag=true;
-                }
-                if (tmp_node.name_.compare(right_node_name)==0){
-                    right_found_flag=true;
-                }
-            }
-            if (left_found_flag==false){
-                std::cout << "When drawing a wire between nodes "<< left_node_name <<" and " << right_node_name << ", couldn't find node labeled " << left_node_name << "\n";
-            }
-            if (right_found_flag==false){
-                std::cout << "When drawing a wire between nodes "<< left_node_name <<" and " << right_node_name << ", couldn't find node labeled " << right_node_name << "\n";
-            }
-            left_node_name_=left_node_name;
-            right_node_name_=right_node_name;
+            right_circuit_elements.push_back(input_element);
+            std::cout << "post-push size: " << right_circuit_elements.size() << "\n";
         }
-};
-
-class BatteryObject
-{
-    public:
-        std::string name_="";
-        std::string left_node_name_="";
-        std::string right_node_name_="";
-        double voltage_=0.0;
-
-        BatteryObject(std::string name,std::string left_node_name, std::string right_node_name, double voltage){
-            name_=name;
-            left_node_name_=left_node_name;
-            right_node_name_=right_node_name;
-            voltage_=voltage;
-        }
-};
-
-class CurrentSourceObject
-{
-    public:
-        std::string name_="";
-        std::string left_node_name_="";
-        std::string right_node_name_="";
-        double current_=0.0;
-
-        CurrentSourceObject(std::string name,std::string left_node_name, std::string right_node_name, double current){
-            name_=name;
-            left_node_name_=left_node_name;
-            right_node_name_=right_node_name;
-            current_=current;
+        bool operator==(const ElectricalCircuitElement& other_element) const {
+            return (name_==other_element.name_);
         }
 };
 
 class ElectricalCircuit
 {
     private:
-        std::vector<ResistorObject> resistor_list_{};
-        std::vector<CapacitorObject> capacitor_list_{};
-        std::vector<InductorObject> inductor_list_{};
-        std::vector<NodeObject> node_list_{};
-        std::vector<BatteryObject> battery_list_{};
-        std::vector<CurrentSourceObject> current_source_list_{};
-        std::vector<WireObject> wire_list_{};
-        std::vector<std::string> mech_connection_type_list={"self","damper","spring"};
+        std::vector<ElectricalCircuitElement> circuit_element_list_{};
+        // std::vector<WireObject> wire_list_{}; //now not sure this will be necessary
+        std::unordered_map<std::string,ElectricalCircuitElement> circuit_element_map_; //want to map names to specific elements
 
     public:
         ElectricalCircuit(MechanicalCircuit input_mechanical_circuit,std::string analogy){
@@ -418,270 +327,212 @@ class ElectricalCircuit
             }
         }
     
-    void add_circuit_element(std::string element_type,std::string element_name,std::string left_node_name,std::string right_node_name,double coefficient){
-        if (element_type.compare("resistor")==0){
-            ResistorObject new_resistor(element_name,left_node_name,right_node_name,coefficient);
-            resistor_list_.insert(resistor_list_.end(),new_resistor);
-        }
-        else if (element_type.compare("capacitor")==0){
-            CapacitorObject new_capacitor(element_name,left_node_name,right_node_name,coefficient);
-            capacitor_list_.insert(capacitor_list_.end(),new_capacitor);
-        }
-        else if (element_type.compare("inductor")==0){
-            InductorObject new_inductor(element_name,left_node_name,right_node_name,coefficient);
-            inductor_list_.insert(inductor_list_.end(),new_inductor);
-        }
-
-        else if (element_type.compare("battery")==0){
-            BatteryObject new_battery(element_name,left_node_name,right_node_name,coefficient);
-            battery_list_.insert(battery_list_.end(),new_battery);
-        }
-        else if (element_type.compare("current_source")==0){
-            CurrentSourceObject new_current_source(element_name,left_node_name,right_node_name,coefficient);
-            current_source_list_.insert(current_source_list_.end(),new_current_source);
-        }
+    void add_circuit_element(std::string element_name,std::string element_type,double coefficient){
+        ElectricalCircuitElement new_element(element_name,element_type,coefficient);
+        circuit_element_list_.push_back(new_element);
+        circuit_element_map_.emplace(element_name,circuit_element_list_.at(circuit_element_list_.size()-1));
     }
+    
 
-    void add_node(std::string node_name){
-        NodeObject new_node(node_name);
-        node_list_.insert(node_list_.end(),new_node);
-    }
-
-    void add_wire(std::string left_node_name,std::string right_node_name,std::vector<NodeObject>& node_list){
-        WireObject new_wire(left_node_name,right_node_name,node_list);
-        wire_list_.insert(wire_list_.end(),new_wire);
-    }
-
-    void list_nodes(){
-        for (size_t node_index=0;node_index<node_list_.size();node_index++){
-            NodeObject tmp_node=node_list_[node_index];
-            std::cout << "Node labeled " << tmp_node.name_ << "\n";
-        }
-    }
 
 
     void force_current_conversion(MechanicalCircuit input_mechanical_circuit){
         //this version is using the force-current analogy
         //first, convert masses to grounded capacitors
+
         for (size_t mass_index=0; mass_index<input_mechanical_circuit.mass_list_.size();mass_index++){
             MassObject mass_element=input_mechanical_circuit.mass_list_[mass_index];
-            //add input node
-            add_node(mass_element.name_+"_node_left");
-            //add output node and wire it to ground
-            add_node(mass_element.name_+"_node_right");
-            add_node(mass_element.name_+"_ground");
-            add_wire(mass_element.name_+"_node_right",mass_element.name_+"_ground",node_list_);
-            add_circuit_element(mass_element.name_,"capacitor",mass_element.name_+"_node_left",mass_element.name_+"_ground",mass_element.mass_);
+            add_circuit_element(mass_element.name_+"_ground","ground",0);
+            add_circuit_element(mass_element.name_,"capacitor",mass_element.mass_);
         }
 
         for (size_t connection_index=0; connection_index<input_mechanical_circuit.connection_list_.size();connection_index++){
-            //next, convert dampers to resistors
+            //next, convert dampers to resistors and add the elements they are connected to (if they don't exist yet)
             ConnectionObject connection_element=input_mechanical_circuit.connection_list_[connection_index];
             if (connection_element.type_.compare("damper")==0){
-            //add input node
-            add_node(connection_element.name_+"_node_left");
-            //add output node
-            add_node(connection_element.name_+"_node_right");
-            add_circuit_element(connection_element.name_,"resistor",connection_element.name_+"_node_left",connection_element.name_+"_node_right",1/connection_element.coefficient_);
+                add_circuit_element(connection_element.name_,"resistor",1/connection_element.coefficient_);
             }
             //next convert springs to inductors
             else if (connection_element.type_.compare("spring")==0){
-            //add input node
-            add_node(connection_element.name_+"_node_left");
-            //add output node
-            add_node(connection_element.name_+"_node_right");
-            add_circuit_element(connection_element.name_,"capacitor",connection_element.name_+"_node_left",connection_element.name_+"_node_right",1/connection_element.coefficient_);
+                add_circuit_element(connection_element.name_,"capacitor",1/connection_element.coefficient_);
             }
         }
-        //now convert forces to current sources
+        //now convert forces to current sources and connect it to the corresponding circuit element and a ground (assuming ground is to the left of forces for now)
         for (size_t force_index=0; force_index<input_mechanical_circuit.force_list_.size();force_index++){
             ForceObject force_element=input_mechanical_circuit.force_list_[force_index];
-            //add input node
-            add_node(force_element.name_+"_node_left");
-            //going to wire "right_node" of masses to ground for externally applied forces, direction of force controls sign of current
-            add_node(force_element.name_+"_node_right");
-            add_node(force_element.name_+"_ground");
-            add_wire(force_element.name_+"_node_right",force_element.name_+"_ground",node_list_);
-            add_circuit_element(force_element.name_,"current_source",force_element.name_+"_node_left",force_element.name_+"_ground",force_element.force_val_);
+            add_circuit_element(force_element.name_+"_ground","ground",0);
+            add_circuit_element(force_element.name_,"current_source",force_element.force_val_);
         }
-        list_nodes();
-        //now need to connect elements properly via wire objects
+
+        //now we need to connect everything (populating left_circuit_elements and right_circuit_elements vecs)
+        //let's start by connecting the mass capacitors to their grounds
+        for (size_t mass_index=0; mass_index<input_mechanical_circuit.mass_list_.size();mass_index++){
+            MassObject mass_element=input_mechanical_circuit.mass_list_[mass_index];
+            ElectricalCircuitElement mass_capacitor=circuit_element_map_.at(mass_element.name_);
+            ElectricalCircuitElement mass_capacitor_ground=circuit_element_map_.at(mass_element.name_+"_ground");
+            mass_capacitor.add_right_element(mass_capacitor_ground);
+            mass_capacitor_ground.add_left_element(mass_capacitor);
+
+            //update objects
+            circuit_element_map_.at(mass_element.name_)=mass_capacitor;
+            circuit_element_map_.at(mass_element.name_+"_ground")=mass_capacitor_ground;
+
+            int elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),mass_capacitor));
+            int ground_elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),mass_capacitor_ground));
+
+            circuit_element_list_[elem_index]=mass_capacitor;
+            circuit_element_list_[ground_elem_index]=mass_capacitor_ground;
+        }
+        //now let's do something similar for force objects
+        for (size_t force_index=0; force_index<input_mechanical_circuit.force_list_.size();force_index++){
+            ForceObject force_element=input_mechanical_circuit.force_list_[force_index];
+            ElectricalCircuitElement force_curr_source=circuit_element_map_.at(force_element.name_);
+            ElectricalCircuitElement force_curr_source_ground=circuit_element_map_.at(force_element.name_+"_ground");
+            force_curr_source.add_left_element(force_curr_source_ground);
+            force_curr_source_ground.add_right_element(force_curr_source);
+
+            //update objects
+            circuit_element_map_.at(force_element.name_)=force_curr_source;
+            circuit_element_map_.at(force_element.name_+"_ground")=force_curr_source_ground;
+
+            int elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),force_curr_source));
+            int ground_elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),force_curr_source_ground));
+
+            circuit_element_list_[elem_index]=force_curr_source;
+            circuit_element_list_[ground_elem_index]=force_curr_source_ground;
+        }
+
+
+        //let's loop back over connection objects again (there's almost certainly a more efficient way to do this, but this'll suffice for now)
         for (size_t connection_index=0; connection_index<input_mechanical_circuit.connection_list_.size();connection_index++){
             ConnectionObject connection_element=input_mechanical_circuit.connection_list_[connection_index];
-            add_wire(connection_element.left_object_name_+"_node_right",connection_element.name_+"_node_left",node_list_);
-            add_wire(connection_element.name_+"_node_right",connection_element.right_object_name_+"_node_left",node_list_);
-        }
-    }
+            //first looking at the element it's connected to on its left
+            //if that object isn't already listed as a connection to its left, add it (it might already be listed if, e.g., it was connected to another connection object, like a spring connected to a damper, and that other connection object got processed first)
+            ElectricalCircuitElement element=circuit_element_map_.at(connection_element.name_);
+            ElectricalCircuitElement element_to_left=circuit_element_map_.at(connection_element.left_element_name_);
+            ElectricalCircuitElement element_to_right=circuit_element_map_.at(connection_element.right_element_name_);
 
-    int find_node_index_by_name(std::string node_name){
-        //identify the index of then named node in the current node_list_
-        auto iterator = std::find_if(node_list_.begin(), node_list_.end(), [&node_name](NodeObject tmp_node) {return (tmp_node.name_.compare(node_name)==0);});
+            auto iter = std::find(element.left_circuit_elements.begin(),element.left_circuit_elements.end(),element_to_left);
 
-        if (iterator != node_list_.end())
-        {
-            //if it found something
-            int matched_index = std::distance(node_list_.begin(), iterator);
-            return matched_index;
-        }
-        else {
-            std::cout << "couldn't find index of node with name " << node_name << "\n";
-            return -1;
-        }
-    }
+            if (iter==element.left_circuit_elements.end()){
+                //if it's not already there
+                element.add_left_element(element_to_left);
+            }
+            //and add this connection object as a right element of whatever it was connecting to, if it's not already there
+            iter = std::find(element_to_left.right_circuit_elements.begin(),element_to_left.right_circuit_elements.end(),element);
 
-    int find_capacitor_index_by_name(std::string capacitor_name){
-        //identify the index of then named capacitor in the current capacitor_list_
-        auto iterator = std::find_if(capacitor_list_.begin(), capacitor_list_.end(), [&capacitor_name](CapacitorObject tmp_capacitor) {return (tmp_capacitor.name_.compare(capacitor_name)==0);});
+            if (iter==element_to_left.right_circuit_elements.end()){
+                //if it's not already there
+                element_to_left.add_right_element(element);
+            }
 
-        if (iterator != capacitor_list_.end())
-        {
-            //if it found something
-            int matched_index = std::distance(capacitor_list_.begin(), iterator);
-            return matched_index;
-        }
-        else {
-            std::cout << "couldn't find index of capacitor with name " << capacitor_name << "\n";
-            return -1;
-        }
-    }
+            //now same for the connection to the right side of the element being looked at 
+            iter = std::find(element.right_circuit_elements.begin(),element.right_circuit_elements.end(),element_to_right);
 
-    int find_resistor_index_by_name(std::string resistor_name){
-        //identify the index of then named resistor in the current resistor_list_
-        auto iterator = std::find_if(resistor_list_.begin(), resistor_list_.end(), [&resistor_name](ResistorObject tmp_resistor) {return (tmp_resistor.name_.compare(resistor_name)==0);});
+            if (iter==element.right_circuit_elements.end()){
+                //if it's not already there
+                element.add_right_element(element_to_right);
+            }
 
-        if (iterator != resistor_list_.end())
-        {
-            //if it found something
-            int matched_index = std::distance(resistor_list_.begin(), iterator);
-            return matched_index;
-        }
-        else {
-            std::cout << "couldn't find index of resistor with name " << resistor_name << "\n";
-            return -1;
-        }
-    }
+            iter = std::find(element_to_right.left_circuit_elements.begin(),element_to_right.left_circuit_elements.end(),element);
 
-    int find_inductor_index_by_name(std::string inductor_name){
-        //identify the index of then named inductor in the current inductor_list_
-        auto iterator = std::find_if(inductor_list_.begin(), inductor_list_.end(), [&inductor_name](InductorObject tmp_inductor) {return (tmp_inductor.name_.compare(inductor_name)==0);});
+            if (iter==element_to_right.left_circuit_elements.end()){
+                //if it's not already there
+                element_to_right.add_left_element(element);
+            }
 
-        if (iterator != inductor_list_.end())
-        {
-            //if it found something
-            int matched_index = std::distance(inductor_list_.begin(), iterator);
-            return matched_index;
-        }
-        else {
-            std::cout << "couldn't find index of inductor with name " << inductor_name << "\n";
-            return -1;
+            //update circuit element objects in circuit list and map
+            circuit_element_map_.at(connection_element.name_)=element;
+            circuit_element_map_.at(connection_element.left_element_name_)=element_to_left;
+            circuit_element_map_.at(connection_element.right_element_name_)=element_to_right;
+
+            int elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),element));
+            int left_elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),element_to_left));
+            int right_elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),element_to_right));
+
+            circuit_element_list_.at(elem_index)=element;
+            circuit_element_list_.at(left_elem_index)=element_to_left;
+            circuit_element_list_.at(right_elem_index)=element_to_right;
         }
     }
 
     void draw_electrical_circuit(){
         //first we need to know how many rows we need to draw. This is driven by the maximum number of elements in parallel seen across the whole circuit.
-        //we can determine the maximum number of elements connected in parallel by the maximum number of elements going in or out of any given node in the circuit.
+        //we can determine the maximum number of elements connected in parallel by the maximum number of elements connected to the left or right of any other element
+        //e.g., if all elements have at most one other element they are connected to on their left and right, it's a serial circuit
         int num_rows=1;
-        //basic idea is to look through all the wires and tally up how many incoming and outgoing wires are associated with each node
-        //can make two zeroed vectors of the same length as the node list, one to keep track of each node's incoming connections and one to keep track of its outgoing connections
-        //incoming is taken to be leftmost node and outgoing is taken to be rightmost node (reading circuits left to right)
-        std::vector<int> node_incoming_connections(node_list_.size());
-        std::vector<int> node_outgoing_connections(node_list_.size());
+        //basic idea is to look through all the elements and find the max length of their left and right vectors
 
-        for (size_t wire_index=0; wire_index<wire_list_.size();wire_index++){
-            WireObject tmp_wire=wire_list_[wire_index];
-            std::cout << "looking at wire between "<<tmp_wire.left_node_name_<< " and "<<tmp_wire.right_node_name_ << "\n";
-            int left_node_index=find_node_index_by_name(tmp_wire.left_node_name_);
-            std::cout << "left node index: " << left_node_index;
-            int right_node_index=find_node_index_by_name(tmp_wire.right_node_name_);
-            std::cout << "right node index: " << right_node_index;
-            int incoming_current_val;
-            int outgoing_current_val;
-            if (left_node_index==-1){
-                std::cout << "skipping past this wire between "<<tmp_wire.left_node_name_<< " and "<<tmp_wire.right_node_name_ << " because of invalid node index on left node\n";
-                continue;
+        for (size_t element_index=0; element_index<circuit_element_list_.size();element_index++){
+            ElectricalCircuitElement tmp_element=circuit_element_list_[element_index];
+            std::cout << "looking at circuit element named " << tmp_element.name_ << "\n";
+            std::cout << "here are the names of the elements it's connected to on its left:\n";
+            for (size_t left_index=0; left_index<tmp_element.left_circuit_elements.size();left_index++){
+                std::cout << tmp_element.left_circuit_elements[left_index].name_ << "\n";
             }
-            if (right_node_index==-1){
-                std::cout << "skipping past this wire between "<<tmp_wire.left_node_name_<< " and "<<tmp_wire.right_node_name_ << " because of invalid node index on right node\n";
-                continue;
+            std::cout << "here are the names of the elements it's connected to on its right:\n";
+
+            for (size_t right_index=0; right_index<tmp_element.right_circuit_elements.size();right_index++){
+                std::cout << tmp_element.right_circuit_elements[right_index].name_ << "\n";
             }
-            incoming_current_val=node_incoming_connections.at(left_node_index);
-            node_incoming_connections.at(left_node_index)=incoming_current_val+1;
-            outgoing_current_val=node_outgoing_connections.at(right_node_index);
-            node_outgoing_connections.at(right_node_index)=outgoing_current_val+1;
+            int left_size=tmp_element.left_circuit_elements.size();
+            int right_size=tmp_element.right_circuit_elements.size();
+            if (left_size>num_rows){
+                num_rows=left_size;
+            }
+            if (right_size>num_rows){
+                num_rows=right_size;
+            }
         }
-        int max_incoming_vec=*std::max_element(node_incoming_connections.begin(),node_incoming_connections.end());
-        int max_outgoing_vec=*std::max_element(node_outgoing_connections.begin(),node_outgoing_connections.end());
-        if (max_incoming_vec>=max_outgoing_vec){
-            num_rows= max_incoming_vec;
-        }
-        else if (max_incoming_vec<max_outgoing_vec){
-            num_rows= max_outgoing_vec;
-        }
-        std::cout << "incoming connection vec: ";
-        for ( int index{0}; index < node_incoming_connections.size(); ++index ){ 
-            std::cout << node_incoming_connections.at(index) << " ";
-        }
-        std::cout << "\n outgoing connection vec: ";
-        for ( int index{0}; index < node_outgoing_connections.size(); ++index ){ 
-            std::cout << node_outgoing_connections.at(index) << " ";
-        }        std::cout << "\n number of rows: " << num_rows<<"\n";
-
-
-        //now how do we check what elements can be drawn first on the left?
-        //first idea is to check if there are any elements which aren't listed as the right-side object in a connection (forces don't count)
-        //recall connections can also be elements (e.g., a damper connected in series to a spring)
-        std::vector<bool> capacitor_bool_vec(capacitor_list_.size(),true);
-        std::vector<bool> resistor_bool_vec(resistor_list_.size(),true);
-        std::vector<bool> inductor_bool_vec(inductor_list_.size(),true);
-        //now go through each connection (resistors and inductors here) and mark whatever element is on the right side as false in its respective list
-
+        std::cout << "num rows: " << num_rows << "\n";
 
     }
 
 
-    void force_voltage_conversion(MechanicalCircuit input_mechanical_circuit){
-        //this version is using the force-voltage analogy
-        //not done yet
-        //first, convert masses to inductors
-        for (size_t mass_index=0; mass_index<input_mechanical_circuit.mass_list_.size();mass_index++){
-            MassObject mass_element=input_mechanical_circuit.mass_list_[mass_index];
-            //add input node
-            add_node(mass_element.name_+"_node_left");
-            //add output node
-            add_node(mass_element.name_+"_node_right");
-            add_circuit_element(mass_element.name_,"inductor",mass_element.name_+"_node_left",mass_element.name_+"_node_right",mass_element.mass_);
-        }
 
-        //next, convert dampers to resistors
-        for (size_t connection_index=0; connection_index<input_mechanical_circuit.connection_list_.size();connection_index++){
-            ConnectionObject connection_element=input_mechanical_circuit.connection_list_[connection_index];
-            if (connection_element.type_.compare("damper")==0){
-            //add input node
-            add_node(connection_element.name_+"_node_left");
-            //add output node
-            add_node(connection_element.name_+"_node_right");
-            add_circuit_element(connection_element.name_,"resistor",connection_element.name_+"_node_left",connection_element.name_+"_node_right",connection_element.coefficient_);
-            }
-            //next convert springs to capacitors
-            else if (connection_element.type_.compare("spring")==0){
-            //add input node
-            add_node(connection_element.name_+"_node_left");
-            //add output node
-            add_node(connection_element.name_+"_node_right");
-            add_circuit_element(connection_element.name_,"capacitor",connection_element.name_+"_node_left",connection_element.name_+"_node_right",1/connection_element.coefficient_);
-            }
-        }
-        //now convert forces to batteries (voltage sources)
-        for (size_t force_index=0; force_index<input_mechanical_circuit.force_list_.size();force_index++){
-            ForceObject force_element=input_mechanical_circuit.force_list_[force_index];
-            //figure out conversion between sign on force and orientation of positive/negative terminals on battery
-            //add input node
-            add_node(force_element.name_+"_node_left");
-            //add output node
-            add_node(force_element.name_+"_node_right");
-            add_circuit_element(force_element.name_,"battery",force_element.name_+"_node_left",force_element.name_+"_node_right",force_element.force_val_);
-        }
+    // void force_voltage_conversion(MechanicalCircuit input_mechanical_circuit){
+    //     //this version is using the force-voltage analogy
+    //     //not done yet
+    //     //first, convert masses to inductors
+    //     for (size_t mass_index=0; mass_index<input_mechanical_circuit.mass_list_.size();mass_index++){
+    //         MassObject mass_element=input_mechanical_circuit.mass_list_[mass_index];
+    //         //add input node
+    //         add_node(mass_element.name_+"_node_left");
+    //         //add output node
+    //         add_node(mass_element.name_+"_node_right");
+    //         add_circuit_element(mass_element.name_,"inductor",mass_element.name_+"_node_left",mass_element.name_+"_node_right",mass_element.mass_);
+    //     }
 
-        //now need to connect elements properly via wire objects
-    }
+    //     //next, convert dampers to resistors
+    //     for (size_t connection_index=0; connection_index<input_mechanical_circuit.connection_list_.size();connection_index++){
+    //         ConnectionObject connection_element=input_mechanical_circuit.connection_list_[connection_index];
+    //         if (connection_element.type_.compare("damper")==0){
+    //         //add input node
+    //         add_node(connection_element.name_+"_node_left");
+    //         //add output node
+    //         add_node(connection_element.name_+"_node_right");
+    //         add_circuit_element(connection_element.name_,"resistor",connection_element.name_+"_node_left",connection_element.name_+"_node_right",connection_element.coefficient_);
+    //         }
+    //         //next convert springs to capacitors
+    //         else if (connection_element.type_.compare("spring")==0){
+    //         //add input node
+    //         add_node(connection_element.name_+"_node_left");
+    //         //add output node
+    //         add_node(connection_element.name_+"_node_right");
+    //         add_circuit_element(connection_element.name_,"capacitor",connection_element.name_+"_node_left",connection_element.name_+"_node_right",1/connection_element.coefficient_);
+    //         }
+    //     }
+    //     //now convert forces to batteries (voltage sources)
+    //     for (size_t force_index=0; force_index<input_mechanical_circuit.force_list_.size();force_index++){
+    //         ForceObject force_element=input_mechanical_circuit.force_list_[force_index];
+    //         //figure out conversion between sign on force and orientation of positive/negative terminals on battery
+    //         //add input node
+    //         add_node(force_element.name_+"_node_left");
+    //         //add output node
+    //         add_node(force_element.name_+"_node_right");
+    //         add_circuit_element(force_element.name_,"battery",force_element.name_+"_node_left",force_element.name_+"_node_right",force_element.force_val_);
+    //     }
+
+    //     //now need to connect elements properly via wire objects
+    // }
 };
