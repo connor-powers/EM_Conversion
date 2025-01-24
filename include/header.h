@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <unordered_map>
+#include <cmath>
 
 class MassObject
 {
@@ -294,20 +295,6 @@ class ElectricalCircuitElement
             coefficient_=coefficient;
         }
 
-        void add_left_element(ElectricalCircuitElement input_element){
-            std::cout << "adding element to left of circuit element named " << name_ << "\n";
-            std::cout << "pre-push size: " << left_circuit_elements.size() << "\n";
-
-            left_circuit_elements.push_back(input_element);
-            std::cout << "post-push size: " << left_circuit_elements.size() << "\n";
-        }
-        void add_right_element(ElectricalCircuitElement input_element){
-            std::cout << "adding element to right of circuit element named " << name_ << "\n";
-            std::cout << "pre-push size: " << right_circuit_elements.size() << "\n";
-
-            right_circuit_elements.push_back(input_element);
-            std::cout << "post-push size: " << right_circuit_elements.size() << "\n";
-        }
         bool operator==(const ElectricalCircuitElement& other_element) const {
             return (name_==other_element.name_);
         }
@@ -317,9 +304,7 @@ class ElectricalCircuit
 {
     private:
         std::vector<ElectricalCircuitElement> circuit_element_list_{};
-        // std::vector<WireObject> wire_list_{}; //now not sure this will be necessary
-        std::unordered_map<std::string,ElectricalCircuitElement> circuit_element_map_; //want to map names to specific elements
-
+        std::string first_force_name_="";
     public:
         ElectricalCircuit(MechanicalCircuit input_mechanical_circuit,std::string analogy){
             if (analogy.compare("Force-Current")==0){
@@ -330,10 +315,43 @@ class ElectricalCircuit
     void add_circuit_element(std::string element_name,std::string element_type,double coefficient){
         ElectricalCircuitElement new_element(element_name,element_type,coefficient);
         circuit_element_list_.push_back(new_element);
-        circuit_element_map_.emplace(element_name,circuit_element_list_.at(circuit_element_list_.size()-1));
     }
     
+    void connect_elements(std::string left_element_name, std::string right_element_name){
+        auto lambdafunc_right = [right_element_name](ElectricalCircuitElement& tmp_element) {
+            return (tmp_element.name_.compare(right_element_name)==0);
+        };
+        auto lambdafunc_left = [left_element_name](ElectricalCircuitElement& tmp_element) {
+            return (tmp_element.name_.compare(left_element_name)==0);
+        };
+        int right_elem_index=std::distance(circuit_element_list_.begin(), std::find_if(circuit_element_list_.begin(),circuit_element_list_.end(),lambdafunc_right));
+        int left_elem_index=std::distance(circuit_element_list_.begin(), std::find_if(circuit_element_list_.begin(),circuit_element_list_.end(),lambdafunc_left));
+        ElectricalCircuitElement left_element=circuit_element_list_.at(left_elem_index);
+        ElectricalCircuitElement right_element=circuit_element_list_.at(right_elem_index);
 
+        //now actually add the element
+        right_element.left_circuit_elements.push_back(left_element);
+        left_element.right_circuit_elements.push_back(right_element);
+
+        circuit_element_list_.at(left_elem_index)=left_element;
+        circuit_element_list_.at(right_elem_index)=right_element;
+
+
+    }
+
+    int find_element_index(std::string element_name){
+        auto lambdafunc = [element_name](ElectricalCircuitElement& tmp_element) {
+            return (tmp_element.name_.compare(element_name)==0);
+        };
+        auto iterator = std::find_if(circuit_element_list_.begin(),circuit_element_list_.end(),lambdafunc);
+        if (iterator != circuit_element_list_.end()){
+            return std::distance(circuit_element_list_.begin(),iterator);
+        }
+        else {
+            std::cout << "didn't find input element name " << element_name << "in circuit element list\n";
+            return -1;
+        }
+    }
 
 
     void force_current_conversion(MechanicalCircuit input_mechanical_circuit){
@@ -342,7 +360,9 @@ class ElectricalCircuit
 
         for (size_t mass_index=0; mass_index<input_mechanical_circuit.mass_list_.size();mass_index++){
             MassObject mass_element=input_mechanical_circuit.mass_list_[mass_index];
-            add_circuit_element(mass_element.name_+"_ground","ground",0);
+            if (mass_element.name_.compare("ground")!=0){
+                add_circuit_element(mass_element.name_+"_ground","ground",0);
+            }
             add_circuit_element(mass_element.name_,"capacitor",mass_element.mass_);
         }
 
@@ -354,7 +374,7 @@ class ElectricalCircuit
             }
             //next convert springs to inductors
             else if (connection_element.type_.compare("spring")==0){
-                add_circuit_element(connection_element.name_,"capacitor",1/connection_element.coefficient_);
+                add_circuit_element(connection_element.name_,"inductor",1/connection_element.coefficient_);
             }
         }
         //now convert forces to current sources and connect it to the corresponding circuit element and a ground (assuming ground is to the left of forces for now)
@@ -362,177 +382,219 @@ class ElectricalCircuit
             ForceObject force_element=input_mechanical_circuit.force_list_[force_index];
             add_circuit_element(force_element.name_+"_ground","ground",0);
             add_circuit_element(force_element.name_,"current_source",force_element.force_val_);
+            if (force_index==0){
+                first_force_name_=force_element.name_;
+            }
         }
 
         //now we need to connect everything (populating left_circuit_elements and right_circuit_elements vecs)
         //let's start by connecting the mass capacitors to their grounds
         for (size_t mass_index=0; mass_index<input_mechanical_circuit.mass_list_.size();mass_index++){
             MassObject mass_element=input_mechanical_circuit.mass_list_[mass_index];
-            ElectricalCircuitElement mass_capacitor=circuit_element_map_.at(mass_element.name_);
-            ElectricalCircuitElement mass_capacitor_ground=circuit_element_map_.at(mass_element.name_+"_ground");
-            mass_capacitor.add_right_element(mass_capacitor_ground);
-            mass_capacitor_ground.add_left_element(mass_capacitor);
-
-            //update objects
-            circuit_element_map_.at(mass_element.name_)=mass_capacitor;
-            circuit_element_map_.at(mass_element.name_+"_ground")=mass_capacitor_ground;
-
-            int elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),mass_capacitor));
-            int ground_elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),mass_capacitor_ground));
-
-            circuit_element_list_[elem_index]=mass_capacitor;
-            circuit_element_list_[ground_elem_index]=mass_capacitor_ground;
+            if (mass_element.name_.compare("ground")!=0){
+                connect_elements(mass_element.name_,mass_element.name_+"_ground");
+            }
         }
         //now let's do something similar for force objects
         for (size_t force_index=0; force_index<input_mechanical_circuit.force_list_.size();force_index++){
             ForceObject force_element=input_mechanical_circuit.force_list_[force_index];
-            ElectricalCircuitElement force_curr_source=circuit_element_map_.at(force_element.name_);
-            ElectricalCircuitElement force_curr_source_ground=circuit_element_map_.at(force_element.name_+"_ground");
-            force_curr_source.add_left_element(force_curr_source_ground);
-            force_curr_source_ground.add_right_element(force_curr_source);
-
-            //update objects
-            circuit_element_map_.at(force_element.name_)=force_curr_source;
-            circuit_element_map_.at(force_element.name_+"_ground")=force_curr_source_ground;
-
-            int elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),force_curr_source));
-            int ground_elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),force_curr_source_ground));
-
-            circuit_element_list_[elem_index]=force_curr_source;
-            circuit_element_list_[ground_elem_index]=force_curr_source_ground;
+            connect_elements(force_element.name_+"_ground",force_element.name_);
+            connect_elements(force_element.name_,force_element.object_name_);
         }
-
 
         //let's loop back over connection objects again (there's almost certainly a more efficient way to do this, but this'll suffice for now)
         for (size_t connection_index=0; connection_index<input_mechanical_circuit.connection_list_.size();connection_index++){
             ConnectionObject connection_element=input_mechanical_circuit.connection_list_[connection_index];
-            //first looking at the element it's connected to on its left
-            //if that object isn't already listed as a connection to its left, add it (it might already be listed if, e.g., it was connected to another connection object, like a spring connected to a damper, and that other connection object got processed first)
-            ElectricalCircuitElement element=circuit_element_map_.at(connection_element.name_);
-            ElectricalCircuitElement element_to_left=circuit_element_map_.at(connection_element.left_element_name_);
-            ElectricalCircuitElement element_to_right=circuit_element_map_.at(connection_element.right_element_name_);
-
-            auto iter = std::find(element.left_circuit_elements.begin(),element.left_circuit_elements.end(),element_to_left);
-
-            if (iter==element.left_circuit_elements.end()){
-                //if it's not already there
-                element.add_left_element(element_to_left);
-            }
-            //and add this connection object as a right element of whatever it was connecting to, if it's not already there
-            iter = std::find(element_to_left.right_circuit_elements.begin(),element_to_left.right_circuit_elements.end(),element);
-
-            if (iter==element_to_left.right_circuit_elements.end()){
-                //if it's not already there
-                element_to_left.add_right_element(element);
-            }
-
-            //now same for the connection to the right side of the element being looked at 
-            iter = std::find(element.right_circuit_elements.begin(),element.right_circuit_elements.end(),element_to_right);
-
-            if (iter==element.right_circuit_elements.end()){
-                //if it's not already there
-                element.add_right_element(element_to_right);
-            }
-
-            iter = std::find(element_to_right.left_circuit_elements.begin(),element_to_right.left_circuit_elements.end(),element);
-
-            if (iter==element_to_right.left_circuit_elements.end()){
-                //if it's not already there
-                element_to_right.add_left_element(element);
-            }
-
-            //update circuit element objects in circuit list and map
-            circuit_element_map_.at(connection_element.name_)=element;
-            circuit_element_map_.at(connection_element.left_element_name_)=element_to_left;
-            circuit_element_map_.at(connection_element.right_element_name_)=element_to_right;
-
-            int elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),element));
-            int left_elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),element_to_left));
-            int right_elem_index=std::distance(circuit_element_list_.begin(), std::find(circuit_element_list_.begin(),circuit_element_list_.end(),element_to_right));
-
-            circuit_element_list_.at(elem_index)=element;
-            circuit_element_list_.at(left_elem_index)=element_to_left;
-            circuit_element_list_.at(right_elem_index)=element_to_right;
+            connect_elements(connection_element.name_,connection_element.right_element_name_);
+            connect_elements(connection_element.left_element_name_,connection_element.name_);
         }
     }
+
+
+    void visit_element(ElectricalCircuitElement current_elem,std::vector<std::vector<std::string>>& input_circuit_grid, std::vector<std::string> input_circuit_grid_row, int input_row_index, int input_column_index,std::vector<std::string>& input_visited_elements,int input_padded_string_length){
+        std::cout << "starting search at element " << current_elem.name_ << "\n";
+        std::cout << "adding " << current_elem.name_ << " to row index " << input_row_index << " and column index " << input_column_index << "\n";
+        std::string disp_string="";
+        if ((current_elem.name_.compare("ground")==0)||(current_elem.type_.compare("ground")==0)){
+            disp_string="[G]";
+        }
+        else {
+            std::string prefix="";
+            std::ostringstream stringstream;
+            stringstream << std::fixed << std::setprecision(3) << current_elem.coefficient_;
+            disp_string=stringstream.str()+")";
+            if (current_elem.type_=="resistor"){
+                prefix="R(";
+            }
+            else if (current_elem.type_=="capacitor"){
+                prefix="C(";
+            }
+            else if (current_elem.type_=="inductor"){
+                prefix="I(";
+            }
+            else if (current_elem.type_=="current_source"){
+                prefix="[->](";
+            }
+            disp_string=prefix+disp_string;
+        }
+        input_circuit_grid.at(input_row_index).at(input_column_index)=disp_string;
+        input_visited_elements.push_back(current_elem.name_);
+
+        //first exploring left
+
+        if (current_elem.left_circuit_elements.size()>0){
+            std::cout << "found " << current_elem.left_circuit_elements.size() <<  " element(s) to the left, exploring that way first\n";
+            for (int lhs_index=0;lhs_index<current_elem.left_circuit_elements.size();lhs_index++){
+                ElectricalCircuitElement new_elem=circuit_element_list_.at(find_element_index(current_elem.left_circuit_elements.at(lhs_index).name_));
+                if (std::find(input_visited_elements.begin(),input_visited_elements.end(),new_elem.name_)!=input_visited_elements.end()){
+                    //if that element has already been explored, skip it
+                    std::cout << "already processed that one, skipping it\n";
+                    continue;
+                }
+                if ((lhs_index==0)&&(current_elem.left_circuit_elements.size()==0)){
+                    if (new_elem.name_.compare(input_circuit_grid.at(input_row_index).at(input_column_index-1))!=0){
+                        std::cout << "Huh?";
+                    }
+                }
+                else {
+
+                    if (lhs_index>0){
+                        std::cout << "couldn't find an element name of " << new_elem.name_ << " in input grid, so adding a row\n";
+                        input_circuit_grid.push_back(input_circuit_grid_row);
+                        std::cout << "adding a branch collapse indicator at row " << input_row_index+1 << " and column index " << input_column_index << "\n";
+
+                        input_circuit_grid.at(input_row_index+1).at(input_column_index)="b.c.u.i.t.c.";//branch collapsing up into this column
+                        input_circuit_grid.push_back(input_circuit_grid_row);
+
+                    }
+                    visit_element(new_elem,input_circuit_grid,input_circuit_grid_row,input_row_index+(2*lhs_index),input_column_index-1,input_visited_elements,input_padded_string_length);
+
+                }
+            }
+
+        }
+
+        //now explore right
+        if (current_elem.right_circuit_elements.size()>0){
+            std::cout << "found " << current_elem.right_circuit_elements.size() <<  " element(s) to the right, exploring that way\n";
+            int effective_index=0;
+            for (int rhs_index=0;rhs_index<current_elem.right_circuit_elements.size();rhs_index++){
+                ElectricalCircuitElement new_elem=circuit_element_list_.at(find_element_index(current_elem.right_circuit_elements.at(rhs_index).name_));
+                std::cout << "found an elem on the right called " << new_elem.name_ << "\n";
+                if (std::find(input_visited_elements.begin(),input_visited_elements.end(),new_elem.name_)!=input_visited_elements.end()){
+                    //if that element has already been explored, skip it
+                    std::cout << "already processed that one, skipping it\n";
+                    continue;
+                }
+
+                if ((rhs_index==0)&&(input_circuit_grid.at(input_row_index).at(input_column_index+1).size()>0)){
+                    std::cout << "Already an element there, iterating effective index to avoid overwriting\n";
+                    effective_index++;
+                }
+                if (effective_index>0){
+                    std::cout << "couldn't find an element name of " << new_elem.name_ << " in input grid, so adding a row\n";
+                    input_circuit_grid.push_back(input_circuit_grid_row);
+                    std::cout << "adding a branch expansion indicator at row " << input_row_index+1 << " and column index " << input_column_index << "\n";
+
+                    input_circuit_grid.at(input_row_index+1).at(input_column_index)="b.e.o.f.t.c.";//branch expanding out from this column
+                    input_circuit_grid.push_back(input_circuit_grid_row);                    
+                }
+                visit_element(new_elem,input_circuit_grid,input_circuit_grid_row,input_row_index+(2*effective_index),input_column_index+1,input_visited_elements,input_padded_string_length);
+                effective_index++;
+
+                  
+            }
+
+        }
+    }
+
 
     void draw_electrical_circuit(){
-        //first we need to know how many rows we need to draw. This is driven by the maximum number of elements in parallel seen across the whole circuit.
-        //we can determine the maximum number of elements connected in parallel by the maximum number of elements connected to the left or right of any other element
-        //e.g., if all elements have at most one other element they are connected to on their left and right, it's a serial circuit
-        int num_rows=1;
-        //basic idea is to look through all the elements and find the max length of their left and right vectors
+        //start with the ground of the first force. This will be the top left of the visualized circuit.
+        std::vector<std::string> circuit_grid_row(circuit_element_list_.size()+1,"");
+        std::vector<std::vector<std::string>> circuit_grid;
+        std::vector<std::string> visited_elements;
 
-        for (size_t element_index=0; element_index<circuit_element_list_.size();element_index++){
-            ElectricalCircuitElement tmp_element=circuit_element_list_[element_index];
-            std::cout << "looking at circuit element named " << tmp_element.name_ << "\n";
-            std::cout << "here are the names of the elements it's connected to on its left:\n";
-            for (size_t left_index=0; left_index<tmp_element.left_circuit_elements.size();left_index++){
-                std::cout << tmp_element.left_circuit_elements[left_index].name_ << "\n";
-            }
-            std::cout << "here are the names of the elements it's connected to on its right:\n";
 
-            for (size_t right_index=0; right_index<tmp_element.right_circuit_elements.size();right_index++){
-                std::cout << tmp_element.right_circuit_elements[right_index].name_ << "\n";
+        circuit_grid.push_back(circuit_grid_row);//first row
+        int current_row_index=0;
+        int current_column_index=0;
+
+        //now let's start our general loop.
+        ElectricalCircuitElement first_elem=circuit_element_list_.at(find_element_index(first_force_name_+"_ground"));
+        int padded_string_length= 14;
+
+        visit_element(first_elem,circuit_grid,circuit_grid_row,current_row_index,current_column_index,visited_elements,padded_string_length);
+        std::string branch_expansion_string="           | ";
+        std::string branch_collapse_string="          |  ";
+
+        for (int row_ind=0;row_ind<circuit_grid.size();row_ind++){
+            std::string row_str="";
+            for (int col_ind=0;col_ind<circuit_grid.at(0).size();col_ind++){
+                std::string current_string=circuit_grid.at(row_ind).at(col_ind);
+
+                if (circuit_grid.at(row_ind).at(col_ind).compare("b.e.o.f.t.c.")==0){
+                    //so there's a branch expanding out from the above element
+                    //to do: make this more flexible
+                    current_string=branch_expansion_string;
+                }
+
+                if ((row_ind>0)&&(col_ind>0)&&(circuit_grid.at(row_ind-1).at(col_ind).compare("b.e.o.f.t.c.")==0)){
+                    //so there's a branch expanding out from the above element
+                    //to do: make this more flexible
+                    current_string="           --";
+
+                }
+                if ((col_ind<circuit_grid.at(0).size()-1)&&(circuit_grid.at(row_ind).at(col_ind+1).compare("b.c.u.i.t.c.")==0)){
+                    //so there's a branch collapsing into the above element
+                    //to do: make this more flexible
+                    current_string=branch_expansion_string;
+                }
+                if ((row_ind>0)&&(col_ind<circuit_grid.at(0).size()-1)&&(circuit_grid.at(row_ind-1).at(col_ind+1).compare("b.c.u.i.t.c.")==0)){
+                    //so there's a branch collapsing into the above element
+                    //to do: make this more flexible
+                    current_string+="----";
+                }
+                if (current_string.compare("b.c.u.i.t.c.")==0){
+
+                    current_string="";
+                }
+
+                if ((col_ind>0)&&(col_ind<circuit_grid.at(0).size()-1)){
+                    std::string right_string=circuit_grid.at(row_ind).at(col_ind+1);
+                    std::string left_string=circuit_grid.at(row_ind).at(col_ind-1);
+                    if ((current_string.size()>0)&&(right_string.size()>0)&&(right_string.compare("b.e.o.f.t.c.")!=0)&&(right_string.compare("b.c.u.i.t.c.")!=0)){
+                        //elems on both sides, should be wire between right? might want to go back and add some kind of check on this
+                        while (current_string.size()<padded_string_length){
+                            current_string+="-";
+                        }
+                    }
+                    else {
+                        while (current_string.size()<padded_string_length){
+                            current_string+=" ";
+                        }
+                    }
+                }
+
+                else if (col_ind==0){
+                    std::string right_string=circuit_grid.at(row_ind).at(col_ind+1);
+                    if (right_string.size()>0){
+                        while (current_string.size()<padded_string_length){
+                            current_string+="-";
+                        }
+                    }
+                    else {
+                        while (current_string.size()<padded_string_length){
+                            current_string+=" ";
+                        }
+                    }
+
+                }
+
+                row_str = row_str+current_string;
+
             }
-            int left_size=tmp_element.left_circuit_elements.size();
-            int right_size=tmp_element.right_circuit_elements.size();
-            if (left_size>num_rows){
-                num_rows=left_size;
-            }
-            if (right_size>num_rows){
-                num_rows=right_size;
-            }
+            std::cout << row_str << "\n";
         }
-        std::cout << "num rows: " << num_rows << "\n";
-
     }
-
-
-
-    // void force_voltage_conversion(MechanicalCircuit input_mechanical_circuit){
-    //     //this version is using the force-voltage analogy
-    //     //not done yet
-    //     //first, convert masses to inductors
-    //     for (size_t mass_index=0; mass_index<input_mechanical_circuit.mass_list_.size();mass_index++){
-    //         MassObject mass_element=input_mechanical_circuit.mass_list_[mass_index];
-    //         //add input node
-    //         add_node(mass_element.name_+"_node_left");
-    //         //add output node
-    //         add_node(mass_element.name_+"_node_right");
-    //         add_circuit_element(mass_element.name_,"inductor",mass_element.name_+"_node_left",mass_element.name_+"_node_right",mass_element.mass_);
-    //     }
-
-    //     //next, convert dampers to resistors
-    //     for (size_t connection_index=0; connection_index<input_mechanical_circuit.connection_list_.size();connection_index++){
-    //         ConnectionObject connection_element=input_mechanical_circuit.connection_list_[connection_index];
-    //         if (connection_element.type_.compare("damper")==0){
-    //         //add input node
-    //         add_node(connection_element.name_+"_node_left");
-    //         //add output node
-    //         add_node(connection_element.name_+"_node_right");
-    //         add_circuit_element(connection_element.name_,"resistor",connection_element.name_+"_node_left",connection_element.name_+"_node_right",connection_element.coefficient_);
-    //         }
-    //         //next convert springs to capacitors
-    //         else if (connection_element.type_.compare("spring")==0){
-    //         //add input node
-    //         add_node(connection_element.name_+"_node_left");
-    //         //add output node
-    //         add_node(connection_element.name_+"_node_right");
-    //         add_circuit_element(connection_element.name_,"capacitor",connection_element.name_+"_node_left",connection_element.name_+"_node_right",1/connection_element.coefficient_);
-    //         }
-    //     }
-    //     //now convert forces to batteries (voltage sources)
-    //     for (size_t force_index=0; force_index<input_mechanical_circuit.force_list_.size();force_index++){
-    //         ForceObject force_element=input_mechanical_circuit.force_list_[force_index];
-    //         //figure out conversion between sign on force and orientation of positive/negative terminals on battery
-    //         //add input node
-    //         add_node(force_element.name_+"_node_left");
-    //         //add output node
-    //         add_node(force_element.name_+"_node_right");
-    //         add_circuit_element(force_element.name_,"battery",force_element.name_+"_node_left",force_element.name_+"_node_right",force_element.force_val_);
-    //     }
-
-    //     //now need to connect elements properly via wire objects
-    // }
 };
