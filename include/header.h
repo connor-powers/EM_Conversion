@@ -527,6 +527,7 @@ class ElectricalCircuit
         visit_element(first_elem,circuit_grid,circuit_grid_row,current_row_index,current_column_index,visited_elements,padded_string_length);
         std::string branch_expansion_string="           | ";
         std::string branch_collapse_string="          |  ";
+        std::cout << "\n";
 
         for (int row_ind=0;row_ind<circuit_grid.size();row_ind++){
             std::string row_str="";
@@ -596,5 +597,12 @@ class ElectricalCircuit
             }
             std::cout << row_str << "\n";
         }
+
+        std::cout << "\nLegend:\n";
+        std::cout << "[G]: Ground\n";
+        std::cout << "[C](x): Capacitor with capacitance x\n";
+        std::cout << "[R](x): Resistor with resistance x\n";
+        std::cout << "[I](x): Inductor with inductance x\n";
+        std::cout << "[->](x): Current source with current x\n";
     }
 };
