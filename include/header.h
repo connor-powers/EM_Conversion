@@ -1,9 +1,10 @@
 #include <iostream>
-#include <Eigen/Dense>
+
 #include <algorithm>
 #include <fstream>
 #include <unordered_map>
 #include <cmath>
+#include <sstream>
 
 class MechanicalCircuitElement
 {
