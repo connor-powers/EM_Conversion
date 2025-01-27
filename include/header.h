@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <cmath>
 #include <sstream>
+#include <vector>
 
 class MechanicalCircuitElement
 {
