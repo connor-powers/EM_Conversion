@@ -9,7 +9,5 @@ int main(){
     elec_circuit.draw_electrical_circuit();
 
 
-
-
     return 0;
 }
