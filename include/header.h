@@ -6,6 +6,7 @@
 #include <cmath>
 #include <sstream>
 #include <vector>
+#include <iomanip>
 
 class MechanicalCircuitElement
 {
