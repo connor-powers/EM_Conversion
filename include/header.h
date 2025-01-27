@@ -1,9 +1,10 @@
 #include <iostream>
-#include <Eigen/Dense>
+
 #include <algorithm>
 #include <fstream>
 #include <unordered_map>
 #include <cmath>
+#include <sstream>
 
 class MechanicalCircuitElement
 {
@@ -254,6 +255,8 @@ class ElectricalCircuit
         std::string first_force_name_="";
         bool verbosity_=false;
     public:
+        std::vector<std::string> output_string_list_={};
+
         ElectricalCircuit(MechanicalCircuit input_mechanical_circuit,std::string analogy){
             verbosity_=input_mechanical_circuit.verbosity_;
             if (analogy.compare("Force-Current")==0){
@@ -512,6 +515,7 @@ class ElectricalCircuit
         std::string branch_expansion_string="           | ";
         std::string branch_collapse_string="          |  ";
         std::cout << "\n";
+        
 
         for (int row_ind=0;row_ind<circuit_grid.size();row_ind++){
             std::string row_str="";
@@ -579,14 +583,19 @@ class ElectricalCircuit
                 row_str = row_str+current_string;
 
             }
-            std::cout << row_str << "\n";
+            output_string_list_.push_back(row_str+"\n");
+
         }
 
-        std::cout << "\nLegend:\n";
-        std::cout << "[G]: Ground\n";
-        std::cout << "[C](x): Capacitor with capacitance x\n";
-        std::cout << "[R](x): Resistor with resistance x\n";
-        std::cout << "[I](x): Inductor with inductance x\n";
-        std::cout << "[->](x): Current source with current x\n";
+        output_string_list_.push_back("\nLegend:\n");
+        output_string_list_.push_back("[G]: Ground\n");
+        output_string_list_.push_back("[C](x): Capacitor with capacitance x\n");
+        output_string_list_.push_back("[R](x): Resistor with resistance x\n");
+        output_string_list_.push_back("[I](x): Inductor with inductance x\n");
+        output_string_list_.push_back("[->](x): Current source with current x\n");
+
+        for (int str_ind=0;str_ind<output_string_list_.size();str_ind++){
+            std::cout << output_string_list_.at(str_ind);
+        }
     }
 };
