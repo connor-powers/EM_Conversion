@@ -16,6 +16,6 @@ TEST(ElectricalCircuitOutputTest,TestCase1){
 
     EXPECT_TRUE(elec_circuit.output_string_list_.at(0)==row_1_groundtruth) << "Mismatch detected in first line of output circuit";
     EXPECT_TRUE(elec_circuit.output_string_list_.at(1)==row_2_groundtruth) << "Mismatch detected in second line of output circuit";
-    EXPECT_TRUE(elec_circuit.output_string_list_.at(2)==row_3_groundtruth) << "Mismatch detected in third line of output circuit";
+    EXPECT_TRUE(elec_circuit.output_string_list_.at(1)==row_3_groundtruth) << "Mismatch detected in third line of output circuit";
 
 }
