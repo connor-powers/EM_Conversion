@@ -36,16 +36,6 @@ name=force_1
 object=damper_1
 force_val=5.21
 
-@mass
-name=mass_2
-mass=100
-
-@spring
-name=spring_2
-left_element=mass_2
-right_element=mass_1
-coefficient=1
-
 
 #other options
 !verbose=false
