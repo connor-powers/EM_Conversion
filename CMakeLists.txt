@@ -10,5 +10,5 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 add_executable(run src/conversion.cpp src/helper_functions.cpp)
-add_executable(my_sample_gtest src/unit_test.cpp)
-target_link_libraries(my_sample_gtest gtest_main)
+add_executable(unit_test tests/unit_test.cpp)
+target_link_libraries(unit_test gtest_main)

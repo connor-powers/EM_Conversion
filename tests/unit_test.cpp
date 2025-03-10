@@ -9,7 +9,7 @@ TEST(ElectricalCircuitOutputTest,TestCase1){
     std::string row_2_groundtruth="                                                     |                                                          \n";
     std::string row_3_groundtruth="                                                     ---C(10.000)-----[G]                                       \n";
 
-    MechanicalCircuit mech_circuit("../input_file.txt");
+    MechanicalCircuit mech_circuit("../tests/input_file.txt");
     //let's build the mechanical circuit object from the input file
     ElectricalCircuit elec_circuit(mech_circuit,"Force-Current");
     elec_circuit.draw_electrical_circuit();
